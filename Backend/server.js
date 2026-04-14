@@ -7,7 +7,9 @@ const path = require('path');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "https://69ddeb161209b7237464d91b--monumental-centaur-fd1d96.netlify.app/"
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../Frontend')));
 
