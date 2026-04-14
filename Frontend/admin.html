@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel - Expense Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-logo">💰 Admin Panel</div>
+    <div class="nav-right">
+      <button class="btn-logout" onclick="window.location.href='index.html'">
+        Back to App
+      </button>
+    </div>
+  </nav>
+
+  <div class="dashboard-container">
+
+    <!-- Stats Row -->
+    <div class="summary-cards">
+      <div class="card balance-card">
+        <p>Total Users</p>
+        <h2 id="total-users">...</h2>
+      </div>
+      <div class="card income-card">
+        <p>Total Transactions</p>
+        <h2 id="total-transactions">...</h2>
+      </div>
+      <div class="card expense-card">
+        <p>Total Income</p>
+        <h2 id="total-income">...</h2>
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="transactions-card" style="margin-top: 0;">
+      <div class="transactions-header">
+        <h3>All Users</h3>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search by name or email..."
+          oninput="searchUsers()"
+          style="padding:8px 12px; border:2px solid #e5e7eb;
+                 border-radius:8px; font-size:13px; outline:none; width:220px;"
+        />
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table id="users-table" style="width:100%; border-collapse:collapse; margin-top:10px;">
+          <thead>
+            <tr style="background:#f3f4f6;">
+              <th style="padding:12px; text-align:left; font-size:13px; color:#6b7280;">#</th>
+              <th style="padding:12px; text-align:left; font-size:13px; color:#6b7280;">Name</th>
+              <th style="padding:12px; text-align:left; font-size:13px; color:#6b7280;">Email</th>
+              <th style="padding:12px; text-align:left; font-size:13px; color:#6b7280;">Joined</th>
+              <th style="padding:12px; text-align:left; font-size:13px; color:#6b7280;">Transactions</th>
+              <th style="padding:12px; text-align:left; font-size:13px; color:#6b7280;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="users-body">
+            <tr>
+              <td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+                Loading users...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const API = 'http://localhost:5000';
+    const TOKEN = localStorage.getItem('token');
+    let allUsers = [];
+
+    if (!TOKEN) {
+      window.location.href = 'index.html';
+    }
+
+    async function loadAdminData() {
+      try {
+        const res = await fetch(API + '/api/admin/users', {
+          headers: { 'Authorization': TOKEN }
+        });
+
+        if (res.status === 403) {
+          document.body.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:center;
+                        height:100vh; font-family:sans-serif; text-align:center;">
+              <div>
+                <div style="font-size:64px;">🚫</div>
+                <h2 style="margin:16px 0 8px;">Access Denied</h2>
+                <p style="color:#6b7280;">You don't have admin access.</p>
+                <button onclick="window.location.href='dashboard.html'"
+                  style="margin-top:20px; padding:10px 24px; background:#667eea;
+                         color:white; border:none; border-radius:8px; cursor:pointer;">
+                  Go to Dashboard
+                </button>
+              </div>
+            </div>`;
+          return;
+        }
+
+        const data = await res.json();
+        allUsers = data.users;
+
+        // Update stats
+        document.getElementById('total-users').textContent = data.stats.totalUsers;
+        document.getElementById('total-transactions').textContent = data.stats.totalTransactions;
+        document.getElementById('total-income').textContent = '₹' + data.stats.totalIncome.toFixed(2);
+
+        renderUsers(allUsers);
+
+      } catch (err) {
+        console.error('Admin load error:', err);
+      }
+    }
+
+    function renderUsers(users) {
+      const tbody = document.getElementById('users-body');
+
+      if (users.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding:30px; color:#9ca3af;">
+              No users found
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = users.map((u, i) => `
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px; font-size:13px; color:#6b7280;">${i + 1}</td>
+          <td style="padding:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:34px; height:34px; border-radius:50%;
+                          background:${getColor(u.name)}; color:white;
+                          display:flex; align-items:center; justify-content:center;
+                          font-weight:700; font-size:14px;">
+                ${u.name.charAt(0).toUpperCase()}
+              </div>
+              <span style="font-size:14px; font-weight:600;">${u.name}</span>
+            </div>
+          </td>
+          <td style="padding:12px; font-size:13px; color:#6b7280;">${u.email}</td>
+          <td style="padding:12px; font-size:13px; color:#6b7280;">
+            ${new Date(u.createdAt).toLocaleDateString('en-IN')}
+          </td>
+          <td style="padding:12px; font-size:13px;">
+            <span style="background:#ede9fe; color:#7c3aed;
+                         padding:3px 10px; border-radius:20px; font-size:12px;">
+              ${u.transactionCount} transactions
+            </span>
+          </td>
+          <td style="padding:12px;">
+            <button onclick="deleteUser('${u._id}', '${u.name}')"
+              style="background:#fee2e2; color:#ef4444; border:none;
+                     padding:6px 14px; border-radius:8px; cursor:pointer;
+                     font-size:12px; font-weight:600;">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function searchUsers() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const filtered = allUsers.filter(u =>
+        u.name.toLowerCase().includes(query) ||
+        u.email.toLowerCase().includes(query)
+      );
+      renderUsers(filtered);
+    }
+
+    async function deleteUser(userId, userName) {
+      if (!confirm(`Delete user "${userName}"?\nThis will also delete all their transactions!`)) return;
+
+      try {
+        const res = await fetch(API + '/api/admin/users/' + userId, {
+          method: 'DELETE',
+          headers: { 'Authorization': TOKEN }
+        });
+
+        if (res.ok) {
+          alert('User deleted successfully');
+          loadAdminData();
+        } else {
+          alert('Failed to delete user');
+        }
+      } catch (err) {
+        alert('Something went wrong');
+      }
+    }
+
+    function getColor(name) {
+      const colors = ['#667eea','#764ba2','#f093fb','#4facfe',
+                      '#43e97b','#fa709a','#fee140','#a18cd1'];
+      return colors[name.charCodeAt(0) % colors.length];
+    }
+
+    loadAdminData();
+  </script>
+
+</body>
+</html>

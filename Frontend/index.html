@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="auth-container">
+    <div class="auth-box">
+
+      <!-- Logo -->
+      <div class="logo">
+        <span class="logo-icon">💰</span>
+        <h1>Expense Tracker</h1>
+        <p>Manage your money smartly</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="tab-btn active" onclick="showTab('login')">Login</button>
+        <button class="tab-btn" onclick="showTab('signup')">Sign Up</button>
+      </div>
+
+      <!-- ── LOGIN FORM ── -->
+      <div id="login-form" class="form-section">
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="Enter your email" />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password" />
+          <!-- Forgot password link — right below password field -->
+          <a href="#" onclick="showForgot()" class="forgot-link">Forgot your password?</a>
+        </div>
+        <div id="login-error" class="error-msg"></div>
+        <button class="btn-primary" onclick="login()">Login</button>
+      </div>
+
+      <!-- ── SIGNUP FORM ── -->
+      <div id="signup-form" class="form-section hidden">
+        <div class="input-group">
+          <label>Full Name</label>
+          <input type="text" id="signup-name" placeholder="Enter your full name" />
+        </div>
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="signup-email" placeholder="Enter your email" />
+        </div>
+        <div class="input-group">
+          <label>Password</label>
+          <input type="password" id="signup-password" placeholder="Create a password" />
+        </div>
+        <div id="signup-error" class="error-msg"></div>
+        <button class="btn-primary" onclick="signup()">Create Account</button>
+      </div>
+
+      <!-- ── FORGOT PASSWORD FORM ── -->
+      <div id="forgot-form" class="form-section hidden">
+        <p style="color:#6b7280; font-size:13px; margin-bottom:16px; text-align:center;">
+          Enter your email and we'll send you a reset link.
+        </p>
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="forgot-email" placeholder="Enter your email" />
+        </div>
+        <div id="forgot-error" class="error-msg"></div>
+        <div id="forgot-success" class="success-msg"></div>
+        <button class="btn-primary" onclick="forgotPassword()">Send Reset Link</button>
+        <p style="text-align:center; margin-top:14px;">
+          <a href="#" onclick="showTab('login')" class="forgot-link">Back to Login</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:5000';
+
+    // If already logged in go to dashboard
+    if (localStorage.getItem('token')) {
+      window.location.href = 'dashboard.html';
+    }
+
+    // ── SHOW TAB ──────────────────────────────────────────
+    function showTab(tab) {
+      // Hide all forms
+      document.querySelectorAll('.form-section').forEach(f => f.classList.add('hidden'));
+      // Remove active from all tabs
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+      // Show selected form
+      document.getElementById(tab + '-form').classList.remove('hidden');
+
+      // Set active tab
+      if (tab === 'login') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      }
+    }
+
+    // ── SHOW FORGOT FORM ──────────────────────────────────
+    function showForgot() {
+      document.querySelectorAll('.form-section').forEach(f => f.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('forgot-form').classList.remove('hidden');
+    }
+
+    // ── LOGIN ─────────────────────────────────────────────
+    async function login() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      const errorDiv = document.getElementById('login-error');
+      errorDiv.textContent = '';
+
+      if (!email || !password) {
+        errorDiv.textContent = 'Please fill in all fields';
+        return;
+      }
+
+      try {
+        const res = await fetch(API + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || 'Login failed';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userName', data.user.name);
+        window.location.href = 'dashboard.html';
+
+      } catch (err) {
+        errorDiv.textContent = 'Something went wrong. Try again.';
+      }
+    }
+
+    // ── SIGNUP ────────────────────────────────────────────
+    async function signup() {
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value.trim();
+      const errorDiv = document.getElementById('signup-error');
+      errorDiv.textContent = '';
+
+      if (!name || !email || !password) {
+        errorDiv.textContent = 'Please fill in all fields';
+        return;
+      }
+
+      if (password.length < 6) {
+        errorDiv.textContent = 'Password must be at least 6 characters';
+        return;
+      }
+
+      try {
+        const res = await fetch(API + '/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || 'Signup failed';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userName', data.user.name);
+        window.location.href = 'dashboard.html';
+
+      } catch (err) {
+        errorDiv.textContent = 'Something went wrong. Try again.';
+      }
+    }
+
+    // ── FORGOT PASSWORD ───────────────────────────────────
+    async function forgotPassword() {
+      const email = document.getElementById('forgot-email').value.trim();
+      const errorDiv = document.getElementById('forgot-error');
+      const successDiv = document.getElementById('forgot-success');
+      errorDiv.textContent = '';
+      successDiv.textContent = '';
+
+      if (!email) {
+        errorDiv.textContent = 'Please enter your email';
+        return;
+      }
+
+      try {
+        const res = await fetch(API + '/api/password/forgot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+        successDiv.textContent = '✅ ' + data.message;
+
+      } catch (err) {
+        errorDiv.textContent = 'Something went wrong. Try again.';
+      }
+    }
+  </script>
+
+</body>
+</html>

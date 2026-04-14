@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - Expense Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-logo">💰 Expense Tracker</div>
+    <div class="nav-right">
+      <div class="user-profile">
+        <div class="avatar" id="avatar-circle">V</div>
+        <span id="user-name">Hello, User</span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="dashboard-container">
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="card balance-card">
+        <p>Total Balance</p>
+        <h2 id="balance">₹0.00</h2>
+      </div>
+      <div class="card income-card">
+        <p>Total Income</p>
+        <h2 id="income">₹0.00</h2>
+      </div>
+      <div class="card expense-card">
+        <p>Total Expenses</p>
+        <h2 id="expense">₹0.00</h2>
+      </div>
+    </div>
+
+    <div class="main-content">
+
+      <!-- Add Transaction Form -->
+      <div class="form-card">
+        <h3>Add Transaction</h3>
+
+        <div class="type-toggle">
+          <button id="btn-income" class="type-btn active" onclick="setType('income')">+ Income</button>
+          <button id="btn-expense" class="type-btn" onclick="setType('expense')">- Expense</button>
+        </div>
+
+        <div class="input-group">
+          <label>Amount (₹)</label>
+          <input type="number" id="amount" placeholder="Enter amount" min="1" />
+        </div>
+
+        <div class="input-group">
+          <label>Category</label>
+          <select id="category">
+            <option value="">Select category</option>
+            <option value="Salary">Salary</option>
+            <option value="Freelance">Freelance</option>
+            <option value="Investment">Investment</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Bills">Bills</option>
+            <option value="Health">Health</option>
+            <option value="Education">Education</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Description (optional)</label>
+          <input type="text" id="description" placeholder="Enter description" />
+        </div>
+
+        <div class="input-group">
+          <label>Date</label>
+          <input type="date" id="date" />
+        </div>
+
+        <div id="form-error" class="error-msg"></div>
+        <button class="btn-primary" onclick="addTransaction()">Add Transaction</button>
+      </div>
+
+      <!-- Transaction List -->
+      <div class="transactions-card">
+        <div class="transactions-header">
+          <h3>Transaction History</h3>
+          <select id="filter" onchange="filterTransactions()">
+            <option value="all">All</option>
+            <option value="income">Income Only</option>
+            <option value="expense">Expense Only</option>
+          </select>
+        </div>
+        <div id="transaction-list">
+          <p class="empty-msg">No transactions yet</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = localStorage.getItem('token');
+    const API = 'http://localhost:5000';
+    let allTransactions = [];
+    let currentType = 'income';
+
+    // If not logged in redirect to login
+    if (!TOKEN) {
+      window.location.href = 'index.html';
+    }
+
+    // Set username and avatar
+    const userName = localStorage.getItem('userName') || 'User';
+    document.getElementById('user-name').textContent = 'Hello, ' + userName;
+
+    // Set avatar first letter of name
+    const firstLetter = userName.charAt(0).toUpperCase();
+    document.getElementById('avatar-circle').textContent = firstLetter;
+
+    // Give avatar a color based on first letter
+    const colors = [
+      '#667eea', '#764ba2', '#f093fb', '#4facfe',
+      '#43e97b', '#fa709a', '#fee140', '#a18cd1'
+    ];
+    const colorIndex = firstLetter.charCodeAt(0) % colors.length;
+    document.getElementById('avatar-circle').style.background = colors[colorIndex];
+
+    // Set today's date as default
+    document.getElementById('date').valueAsDate = new Date();
+
+    function setType(type) {
+      currentType = type;
+      document.getElementById('btn-income').classList.toggle('active', type === 'income');
+      document.getElementById('btn-expense').classList.toggle('active', type === 'expense');
+
+      const cat = document.getElementById('category');
+      if (type === 'income') {
+        cat.innerHTML = `
+          <option value="">Select category</option>
+          <option value="Salary">Salary</option>
+          <option value="Freelance">Freelance</option>
+          <option value="Investment">Investment</option>
+          <option value="Business">Business</option>
+          <option value="Other">Other</option>`;
+      } else {
+        cat.innerHTML = `
+          <option value="">Select category</option>
+          <option value="Food">Food</option>
+          <option value="Transport">Transport</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Bills">Bills</option>
+          <option value="Health">Health</option>
+          <option value="Education">Education</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Other">Other</option>`;
+      }
+    }
+
+    async function loadSummary() {
+      try {
+        const res = await fetch(API + '/api/transactions/summary', {
+          headers: { 'Authorization': TOKEN }
+        });
+        const data = await res.json();
+        document.getElementById('balance').textContent = '₹' + data.balance.toFixed(2);
+        document.getElementById('income').textContent = '₹' + data.income.toFixed(2);
+        document.getElementById('expense').textContent = '₹' + data.expense.toFixed(2);
+
+        const balanceEl = document.getElementById('balance');
+        balanceEl.style.color = data.balance >= 0 ? '#22c55e' : '#ef4444';
+      } catch (err) {
+        console.error('Summary error:', err);
+      }
+    }
+
+    async function loadTransactions() {
+      try {
+        const res = await fetch(API + '/api/transactions', {
+          headers: { 'Authorization': TOKEN }
+        });
+        allTransactions = await res.json();
+        renderTransactions(allTransactions);
+      } catch (err) {
+        console.error('Load error:', err);
+      }
+    }
+
+    function renderTransactions(transactions) {
+      const list = document.getElementById('transaction-list');
+
+      if (transactions.length === 0) {
+        list.innerHTML = '<p class="empty-msg">No transactions found</p>';
+        return;
+      }
+
+      list.innerHTML = transactions.map(t => `
+        <div class="transaction-item ${t.type}">
+          <div class="t-left">
+            <span class="t-icon">${t.type === 'income' ? '⬆️' : '⬇️'}</span>
+            <div>
+              <p class="t-category">${t.category}</p>
+              <p class="t-desc">${t.description || 'No description'}</p>
+              <p class="t-date">${new Date(t.date).toLocaleDateString('en-IN')}</p>
+            </div>
+          </div>
+          <div class="t-right">
+            <p class="t-amount ${t.type}">
+              ${t.type === 'income' ? '+' : '-'}₹${t.amount.toFixed(2)}
+            </p>
+            <button class="btn-delete" onclick="deleteTransaction('${t._id}')">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterTransactions() {
+      const filter = document.getElementById('filter').value;
+      if (filter === 'all') {
+        renderTransactions(allTransactions);
+      } else {
+        renderTransactions(allTransactions.filter(t => t.type === filter));
+      }
+    }
+
+    async function addTransaction() {
+      const amount = document.getElementById('amount').value;
+      const category = document.getElementById('category').value;
+      const description = document.getElementById('description').value;
+      const date = document.getElementById('date').value;
+      const errorDiv = document.getElementById('form-error');
+      errorDiv.textContent = '';
+
+      if (!amount || !category) {
+        errorDiv.textContent = 'Please fill in amount and category';
+        return;
+      }
+
+      if (amount <= 0) {
+        errorDiv.textContent = 'Amount must be greater than 0';
+        return;
+      }
+
+      try {
+        const res = await fetch(API + '/api/transactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': TOKEN
+          },
+          body: JSON.stringify({
+            type: currentType,
+            amount: parseFloat(amount),
+            category,
+            description,
+            date
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorDiv.textContent = data.message || 'Failed to add';
+          return;
+        }
+
+        // Reset form
+        document.getElementById('amount').value = '';
+        document.getElementById('description').value = '';
+        document.getElementById('category').value = '';
+        document.getElementById('date').valueAsDate = new Date();
+
+        loadSummary();
+        loadTransactions();
+
+      } catch (err) {
+        errorDiv.textContent = 'Something went wrong';
+      }
+    }
+
+    async function deleteTransaction(id) {
+      if (!confirm('Delete this transaction?')) return;
+
+      try {
+        const res = await fetch(API + '/api/transactions/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': TOKEN }
+        });
+
+        if (res.ok) {
+          loadSummary();
+          loadTransactions();
+        }
+      } catch (err) {
+        console.error('Delete error:', err);
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userName');
+      window.location.href = 'index.html';
+    }
+
+    // Load everything on page start
+    loadSummary();
+    loadTransactions();
+  </script>
+
+</body>
+</html>
