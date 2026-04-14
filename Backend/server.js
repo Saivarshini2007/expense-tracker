@@ -8,7 +8,7 @@ const path = require('path');
 const app = express();
 
 app.use(cors({
-  origin: "https://69ddeb161209b7237464d91b--monumental-centaur-fd1d96.netlify.app/"
+  origin: "https://69ddeb161209b7237464d91b--monumental-centaur-fd1d96.netlify.app"
 }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../Frontend')));
@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname, '../Frontend')));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/transactions', require('./routes/transactions'));
-app.use('/api/password', require('./routes/password')); // ← ADD THIS
+app.use('/api/password', require('./routes/password'));
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/{*splat}', (req, res) => {
@@ -33,4 +33,3 @@ mongoose.connect(process.env.MONGO_URI)
   .catch(err => {
     console.log('DB connection error ❌:', err.message);
   });
- 
