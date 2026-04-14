@@ -9,7 +9,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, '../Frontend')));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -18,7 +18,7 @@ app.use('/api/password', require('./routes/password')); // ← ADD THIS
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/{*splat}', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  res.sendFile(path.join(__dirname, '../Frontend/index.html'));
 });
 
 mongoose.connect(process.env.MONGO_URI)
