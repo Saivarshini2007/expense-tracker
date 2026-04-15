@@ -7,7 +7,9 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: function (origin, callback) {
+    callback(null, true); // Allow all origins
+  },
   credentials: true
 }));
 
