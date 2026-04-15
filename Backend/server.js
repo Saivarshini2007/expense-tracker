@@ -7,7 +7,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: "https://monumental-centaur-fd1d96.netlify.app",
+  origin: process.env.CLIENT_URL,
   credentials: true
 }));
 
@@ -19,7 +19,7 @@ app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/password', require('./routes/password'));
 app.use('/api/admin', require('./routes/admin'));
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect("mongodb+srv://saivarshini_db_user:ksv%402024@expense-tracker-cluster.dxrhrks.mongodb.net/?appName=expense-tracker-cluster")
   .then(() => {
     console.log('MongoDB connected ✅');
     const PORT = process.env.PORT || 5000;
